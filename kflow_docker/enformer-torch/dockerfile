@@ -1,0 +1,45 @@
+# start with base image with torch and cuda drivers
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch-cuda-full:v1.5.0
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch-cuda:v1.5.0
+FROM kubeflownotebookswg/jupyter-pytorch-cuda-full:v1.6.0-rc.0 
+# the cuda drivers seem to be too recent??
+#FROM  kubeflownotebookswg/jupyter-scipy:v1.8.0-rc.1 -- this does not work!!!!!!!!!!!
+
+# the cuda drivers don't line up with whatever torch enformer-pytorch installs
+
+USER root
+# update - ensure apt packages are always updated
+# Prevents prompts during installations
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+#    apt-get install -y build-essential && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+#USER $NB_UID
+# add desired package -- these should be version controlled eventually, and need a requirements.txt
+#RUN git clone https://github.com/instadeepai/nucleotide-transformer.git \
+# && cd nucleotide-transformer \
+# && pip install . 
+
+
+# extras to attempt to get baskerville to work
+#RUN apt-get install -y bedtools && pip install cython numpy pandas pysam
+
+# now we install the baskerville repo
+#RUN git clone https://github.com/calico/baskerville.git \
+# && cd baskerville \
+# && pip install -e .
+
+# now we install the borzoi repo
+#RUN git clone https://github.com/calico/borzoi.git \
+# && cd borzoi \
+# && pip install -e . 
+USER $NB_UID
+# in the base image this comes from, the line below does not mess up the drivers :)
+RUN pip install --upgrade torch==2.1.0+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+# installing the enformer package does not perturb the cuda drivers after
+RUN pip install enformer-pytorch
+# install everything else
+RUN pip install pandas numpy scipy seaborn matplotlib boto3 awscli

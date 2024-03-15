@@ -1,0 +1,75 @@
+FROM kubeflownotebookswg/jupyter-scipy:v1.8.0-rc.1
+
+USER root
+# update - ensure apt packages are always updated
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq upgrade \
+ && apt-get clean \
+ && apt-get install -y curl \
+ && apt-get install -y unzip zlib1g-dev zlibc gcc g++ make\
+ && rm -rf /var/lib/apt/lists/*
+# boost path is messed up--need to specify the extact path where boost is installed for cmake
+#RUN wget https://versaweb.dl.sourceforge.net/project/boost/boost/1.54.0/boost_1_54_0.tar.gz
+#http://sourceforge.net/projects/boost/files/boost/1.54.0/boost_1_54_0.tar.gz 
+#RUN tar -xvzf boost_1_54_0.tar.gz 
+#RUN cd boost_1_54_0 && ./bootstrap.sh && ./b2 install -j 8
+# -j 8 gives it 8 threads to compile with
+# get bcl2fastq
+#RUN wget ftp://webdata2:webdata2@ussd-ftp.illumina.com/downloads/software/bcl2fastq/bcl2fastq2-v2-20-0-tar.zip \
+# && unzip bcl2fastq2-v2-20-0-tar.zip \
+# && tar -zxvf bcl2fastq2-v2.20.0.422-Source.tar.gz \
+# && rm bcl2fastq2-v2-20-0-tar.zip bcl2fastq2-v2.20.0.422-Source.tar.gz \
+# && mv bcl2fastq /opt/
+# install it
+#ENV TMP=/opt
+#ENV SOURCE=${TMP}/bcl2fastq
+#ENV BUILD=${TMP}/bcl2fastq2-v2.20-build
+#ENV INSTALL_DIR=/opt/bcl2fastq2-v2.20
+#RUN mkdir ${BUILD} && cd ${BUILD}
+#RUN chmod ugo+x ${SOURCE}/src/configure
+#RUN chmod ugo+x ${SOURCE}/src/cmake/bootstrap/installCmake.sh
+# sys/stat.h and sys/types.h
+#RUN mkdir /usr/include/sys
+#RUN cp /usr/include/x86_64-linux-gnu/sys/stat.h /usr/include/sys/stat.h
+#RUN cp /usr/include/x86_64-linux-gnu/sys/types.h /usr/include/sys/types.h
+# compile fastq2bcl --prefix was INSTALL_DIR
+#RUN cd /opt/bcl2fastq/src && ./configure --force-builddir && make && make install
+#RUN ${SOURCE}/src/configure --prefix=/usr/local/ 
+#RUN cd ${BUILD}
+#RUN sed -i 's|CMAKE_BINARY_DIR = /|CMAKE_BINARY_DIR = '"$BUILD"'|' Makefile
+#RUN grep "all"  CMakeFiles/Makefile2 && exit 1
+#RUN ls && pwd
+#RUN make
+#RUN make install
+# still not on path, but may be sufficient for debugging
+# get subset-bam
+#RUN wget https://github.com/10XGenomics/subset-bam/releases/download/v1.1.0/subset-bam_linux \
+# && mv subset-bam_linux /opt/subset-bam
+# add to path
+#ENV PATH=/opt/:$PATH
+
+
+# this is just src code, not an executable binary
+#ENV INSTALL=/opt/bcl2fastq
+#RUN /opt/bcl2fastq/src/configure --prefix=${INSTALL}
+# likely to fail at the build here. Worst case abandon it and move onto to next steps
+
+# bcl last because slow.
+# get bcl2fastq
+RUN wget ftp://webdata2:webdata2@ussd-ftp.illumina.com/downloads/software/bcl2fastq/bcl2fastq2-v2-20-0-tar.zip \
+ && unzip bcl2fastq2-v2-20-0-tar.zip \
+ && tar -zxvf bcl2fastq2-v2.20.0.422-Source.tar.gz \
+ && rm bcl2fastq2-v2-20-0-tar.zip bcl2fastq2-v2.20.0.422-Source.tar.gz \
+ && mv bcl2fastq /opt/
+
+RUN mkdir /usr/include/sys
+RUN cp /usr/include/x86_64-linux-gnu/sys/stat.h /usr/include/sys/stat.h
+RUN cp /usr/include/x86_64-linux-gnu/sys/types.h /usr/include/sys/types.h
+# compile fastq2bcl --prefix was INSTALL_DIR
+RUN cd /opt/bcl2fastq/src && ./configure --force-builddir && make && make install
+# still not on path, but may be sufficient for debugging
+# need to check that debuggint this works
+USER $NB_UID
+RUN pip install scanpy pandas numpy scipy seaborn scikit-learn matplotlib boto3 awscli
+#ENTRYPOINT [ "cellranger" ]

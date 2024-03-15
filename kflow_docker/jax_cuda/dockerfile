@@ -1,0 +1,134 @@
+#FROM pyhf/cuda:0.6.1-jax-cuda-11.1
+FROM pyhf/cuda:0.7.2-jax-cuda-11.8.0-cudnn8
+USER root
+# common environemnt variables
+ENV NB_USER jovyan
+ENV NB_UID 1000
+ENV NB_PREFIX /
+ENV HOME /home/$NB_USER
+ENV SHELL /bin/bash
+
+# args - software versions
+ARG KUBECTL_ARCH="amd64"
+ARG KUBECTL_VERSION=v1.21.0
+ARG S6_ARCH="amd64"
+ # renovate: datasource=github-tags depName=just-containers/s6-overlay versioning=loose
+ARG S6_VERSION=v2.2.0.3
+
+# set shell to bash
+#SHELL ["/bin/bash", "-c"]
+
+# without this the apt get update and installs won't work properly
+#RUN rm /etc/apt/sources.list.d/cuda.list
+#RUN rm /etc/apt/sources.list.d/nvidia-ml.list
+
+# install - usefull linux packages
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq install --no-install-recommends \
+    apt-transport-https \
+    bash \
+    bzip2 \
+    ca-certificates \
+    curl \
+    git \
+    gnupg \
+    gnupg2 \
+    locales \
+    lsb-release \
+    nano \
+    software-properties-common \
+    tzdata \
+    unzip \
+    vim \
+    wget \
+    zip \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+# install - s6 overlay
+RUN export GNUPGHOME=/tmp/ \
+ && curl -sL "https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-${S6_ARCH}-installer" -o /tmp/s6-overlay-${S6_VERSION}-installer \
+ && curl -sL "https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-${S6_ARCH}-installer.sig" -o /tmp/s6-overlay-${S6_VERSION}-installer.sig \
+ && gpg --keyserver keys.gnupg.net --keyserver pgp.surfnet.nl --recv-keys 6101B2783B2FD161 \
+ && gpg -q --verify /tmp/s6-overlay-${S6_VERSION}-installer.sig /tmp/s6-overlay-${S6_VERSION}-installer \
+ && chmod +x /tmp/s6-overlay-${S6_VERSION}-installer \
+ && /tmp/s6-overlay-${S6_VERSION}-installer / \
+ && rm /tmp/s6-overlay-${S6_VERSION}-installer.sig /tmp/s6-overlay-${S6_VERSION}-installer
+
+# install - kubectl
+RUN curl -sL "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl" -o /usr/local/bin/kubectl \
+ && curl -sL "https://dl.k8s.io/${KUBECTL_VERSION}/bin/linux/${KUBECTL_ARCH}/kubectl.sha256" -o /tmp/kubectl.sha256 \
+ && echo "$(cat /tmp/kubectl.sha256) /usr/local/bin/kubectl" | sha256sum --check \
+ && rm /tmp/kubectl.sha256 \
+ && chmod +x /usr/local/bin/kubectl
+
+# moral of the story: doing this without conda is a bad idea and is a bigger pain than it's worth
+# I would stop working on this for now
+
+
+#USER ${NB_UID}
+#USER $NB_USER
+#RUN pip install pandas numpy scipy seaborn matplotlib boto3 awscli
+USER root
+# this is the part that kubeflow is complaining about
+# create user and set required ownership
+RUN useradd -M -s /bin/bash -N -u ${NB_UID} ${NB_USER} \
+ && mkdir -p ${HOME} \
+ && chown -R ${NB_USER}:users ${HOME} \
+ && chown -R ${NB_USER}:users /usr/local/bin \
+ && chown -R ${NB_USER}:users /etc/s6
+
+# set locale configs
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
+ && locale-gen
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
+# install it here to see if still breaks jupyter
+#RUN pip install pandas numpy scipy seaborn matplotlib boto3 awscli
+
+# trying to see if I can skip past conda here
+#RUN pip install jsonschema==3.2
+
+# install - requirements.txt
+#COPY --chown=jovyan:users requirements.txt /tmp
+#RUN python3 -m pip install -r /tmp/requirements.txt --quiet --no-cache-dir \
+# && rm -f /tmp/requirements.txt \
+# && jupyter lab --generate-config \
+# && rm -rf ${HOME}/.cache/yarn
+
+# make sure conda dir is set up, even if no conda
+#ENV CONDA_DIR /opt/conda
+#ENV PATH "${CONDA_DIR}/bin:${PATH}"
+#RUN mkdir -p ${CONDA_DIR} \
+# && chown -R ${NB_USER}:users ${CONDA_DIR}
+#RUN chown -R ${NB_USER}:users ${CONDA_DIR}
+#RUN chown -R ${NB_USER}:users ${HOME}
+
+# s6 - copy scripts
+COPY --chown=jovyan:users s6/ /etc
+
+# s6 - 01-copy-tmp-home
+USER root
+RUN mkdir -p /tmp_home \
+ && cp -r ${HOME} /tmp_home \
+ && chown -R ${NB_USER}:users /tmp_home
+USER ${NB_UID}
+# by this point, $HOME does exist, it returns real stuff
+RUN ls -la $HOME  && exit 1
+# seems we have permissions problems on s6 stuff, which should be here
+
+# also it says /home/jovyan/ doesn't exist
+
+#RUN pip install jupyterlab==3.4.3 notebook==6.4.12 ipykernel==6.15.0
+
+# install everything else
+#RUN pip install pandas numpy scipy seaborn matplotlib boto3 awscli
+
+USER ${NB_UID}
+RUN pip install jupyterlab==3.4.3 notebook==6.4.12 ipykernel==6.15.0
+
+EXPOSE 8888
+
+ENTRYPOINT ["/init"]

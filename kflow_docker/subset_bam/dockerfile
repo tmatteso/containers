@@ -1,0 +1,22 @@
+FROM kubeflownotebookswg/jupyter-scipy:v1.8.0-rc.1
+
+USER root
+# update - ensure apt packages are always updated
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq upgrade \
+ && apt-get clean \
+ && apt-get install -y curl \
+ && apt-get install -y unzip zlib1g-dev zlibc gcc g++ make\
+ && rm -rf /var/lib/apt/lists/*
+# get subset-bam
+RUN wget https://github.com/10XGenomics/subset-bam/releases/download/v1.1.0/subset-bam_linux \
+ && mv subset-bam_linux /opt/subset-bam
+# add to path
+ENV PATH=/opt/:$PATH
+# need to change permissions on the executable for NB USER
+RUN chmod ugo+x /opt/subset-bam
+
+USER $NB_UID
+RUN pip install scanpy pandas numpy scipy seaborn scikit-learn matplotlib boto3 awscli
+#ENTRYPOINT [ "cellranger" ]

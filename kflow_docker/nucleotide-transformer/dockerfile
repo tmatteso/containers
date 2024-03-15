@@ -1,0 +1,35 @@
+# start with base image with torch and cuda drivers
+# the base images are up again!!
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch-cuda-full:v1.5.0
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch-cuda:v1.5.0
+FROM kubeflownotebookswg/jupyter-pytorch-cuda-full:v1.8.0-rc.1
+
+
+USER root
+# update - ensure apt packages are always updated
+# Prevents prompts during installations
+#ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update 
+#&& \
+#    apt-get install -y build-essential && \
+#    apt-get clean && \
+#    rm -rf /var/lib/apt/lists/*
+
+# add desired package -- these should be version controlled eventually, and need a requirements.txt
+RUN git clone https://github.com/instadeepai/nucleotide-transformer.git \
+ && cd nucleotide-transformer \
+ && pip install . 
+
+# install everything else
+ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu
+RUN pip install --upgrade "jax[cuda11_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+
+#RUN echo $LD_LIBRARY_PATH && exit 1
+USER $NB_UID
+#RUN echo $LD_LIBRARY_PATH && exit 1
+RUN pip install pandas numpy scipy seaborn matplotlib boto3 awscli
+#RUN echo $LD_LIBRARY_PATH && exit 1
+#USER $NB_UID
+#RUN cd .. 
+# ensure image passes CI tests (Github Actions)

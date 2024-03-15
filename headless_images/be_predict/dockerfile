@@ -1,0 +1,17 @@
+#FROM amd64/ubuntu:22.04
+FROM python:3.7.17-slim-bullseye
+
+USER root
+# update - ensure apt packages are always updated
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq upgrade \
+ && apt-get clean \
+ && apt-get install -y curl wget build-essential\
+ && apt-get install -y unzip zlib1g-dev make\
+ && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --upgrade cython numpy
+RUN pip install scikit-learn==0.20.3
+RUN pip install Biopython==1.73
+RUN pip install pandas matplotlib boto3 awscli

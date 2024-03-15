@@ -1,0 +1,43 @@
+# start with base image with torch and cuda drivers
+FROM  kubeflownotebookswg/jupyter-pytorch-cuda-full:v1.8.0-rc.1
+# tried scipy and ran into cuda problems
+USER root
+# update - ensure apt packages are always updated
+# Prevents prompts during installations
+#ARG DEBIAN_FRONTEND=noninteractive
+
+#RUN apt-get update && \
+##    apt-get install -y build-essential && \
+#    apt-get clean && \
+#    rm -rf /var/lib/apt/lists/*
+# needs nvcc to progress -- why? does it need to compile new cuda code?
+# yes! need it for flash attention
+# flash attention also needs g++ compiler
+RUN conda install pytorch==1.13.0 torchvision==0.14.0 torchaudio==0.13.0 pytorch-cuda=11.7 -c pytorch -c nvidia
+RUN conda install -c "nvidia/label/cuda-11.7.0" cuda-nvcc
+RUN conda install -c conda-forge gxx==11.3.0
+WORKDIR /wdr
+
+COPY requirements.txt .
+
+# it actually is failing here
+RUN pip install --trusted-host pypi.python.org -r requirements.txt
+# you can install flash-attn via pip and it's easier
+RUN pip install flash-attn
+# it seems that you need git lfs to download weights from hugging face
+RUN apt-get update && \
+    apt-get install -y git-lfs
+#RUN apt-get install git-lfs
+
+COPY . .
+
+#RUN cd hyena-dna/flash-attention && pip install . --no-build-isolation && \
+#    cd csrc/layer_norm && pip install . --no-build-isolation
+
+# install everything else
+RUN pip install pandas numpy scipy seaborn matplotlib boto3 awscli
+
+USER $NB_UID
+#RUN cd .. 
+# ensure image passes CI tests (Github Actions)
+

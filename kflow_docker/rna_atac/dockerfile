@@ -1,0 +1,40 @@
+# start with base image with torch and cuda drivers
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch-cuda-full:v1.5.0
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch-cuda:v1.5.0
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-scipy:v1.5.0
+FROM tmatteso/ye-lab-ucsf:svae
+USER root
+# update - ensure apt packages are always updated
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq upgrade \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+# add desired package -- these should be version controlled eventually, and need a requirements.txt
+# install basics + multiVI
+RUN pip install scanpy pandas numpy scipy seaborn scikit-learn==0.22 
+RUN pip install matplotlib boto3 awscli muon anndata 
+# this will allow multivi to be set up
+#RUN git clone https://github.com/Genentech/sVAE.git \
+# && cd sVAE \
+# && pip install -e . 
+# install MultiVI set up 
+#RUN pip install scvi-tools
+# install babel
+#RUN git clone https://github.com/wukevin/babel.git && mv babel /home/jovyan
+RUN pip install astropy cached_property captum intervaltree gdown skorch
+RUN pip install numba leidenalg louvain sortedcontainers statsmodels
+RUN pip install tensorboard tqdm umap-learn mpl-scatter-density adjustText
+RUN pip install tensorflow easydl
+RUN pip uninstall sklearn --yes 
+# install scMVP
+RUN git clone https://github.com/bm2-lab/scMVP.git scMVP \
+ && cd scMVP/ \
+ && python setup.py install 
+RUN pip install torch==1.9
+USER $NB_UID
+
+#RUN cd .. 
+# ensure image passes CI tests (Github Actions)
+

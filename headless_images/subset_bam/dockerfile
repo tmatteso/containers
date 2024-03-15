@@ -1,0 +1,19 @@
+FROM amd64/ubuntu:22.04
+USER root
+
+# update - ensure apt packages are always updated
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq upgrade \
+ && apt-get clean \
+ && apt-get install -y curl wget build-essential\
+ && apt-get install -y unzip zlib1g-dev make\
+ && rm -rf /var/lib/apt/lists/*
+
+# get subset-bam
+RUN wget https://github.com/10XGenomics/subset-bam/releases/download/v1.1.0/subset-bam_linux \
+ && mv subset-bam_linux /opt/subset-bam
+# add to path
+ENV PATH=/opt/:$PATH
+# need to change permissions on the executable for NB USER
+#RUN chmod ugo+x /opt/subset-bam

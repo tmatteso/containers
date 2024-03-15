@@ -1,0 +1,45 @@
+FROM amd64/ubuntu:22.04
+
+USER root
+# update - ensure apt packages are always updated
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq upgrade \
+ && apt-get clean \
+ && apt-get install -y curl \
+ && apt-get install -y unzip zlib1g-dev gcc g++ make\
+ && apt-get install ca-certificates\
+ && rm -rf /var/lib/apt/lists/*
+
+# make these built in, beware the paradox of choice
+ENV CELLRANGER_VERSION=7.1.0
+ENV VDJ_REFERENCE_VERSION=7.0.0 
+# this download URL may be the issue
+
+#ENV DOWNLOAD_URL=http://regmedsrv1.wustl.edu/Public_SPACE/litd/Public_html/pkg/cellranger-7.1.0.tar.gz
+ENV DOWNLOAD_URL=https://regmedsrv1.wustl.edu/Public_SPACE/litd/Public_html/pkg/cellranger-7.1.0.tar.gz
+ENV PATH=/opt/cellranger-${CELLRANGER_VERSION}:$PATH
+
+# cell ranger binaries
+RUN curl -k -o cellranger-${CELLRANGER_VERSION}.tar.gz ${DOWNLOAD_URL} \
+    && tar xzf cellranger-${CELLRANGER_VERSION}.tar.gz \
+    && rm -rf cellranger-${CELLRANGER_VERSION}.tar.gz \
+    && mv cellranger-${CELLRANGER_VERSION} /opt/
+
+# the references are simply too large to decompress
+
+# V(D)J GRCh38 Reference - 7.0.0 (May 17, 2022)
+#RUN curl -O https://cf.10xgenomics.com/supp/cell-vdj/refdata-cellranger-vdj-GRCh38-alts-ensembl-${VDJ_REFERENCE_VERSION}.tar.gz \
+#    && tar xzf refdata-cellranger-vdj-GRCh38-alts-ensembl-${VDJ_REFERENCE_VERSION}.tar.gz \
+#    && rm -rf refdata-cellranger-vdj-GRCh38-alts-ensembl-${VDJ_REFERENCE_VERSION}.tar.gz \
+#    && mv refdata-cellranger-vdj-GRCh38-alts-ensembl-${VDJ_REFERENCE_VERSION}.tar.gz /opt/
+
+# these references are for both arc and normal cellranger, but they are too big to have in an image
+# get the references for arc
+#ENV REFERENCE_VERSION=2020-A
+# Human
+#RUN curl -O https://cf.10xgenomics.com/supp/cell-exp/refdata-gex-GRCh38-${REFERENCE_VERSION}.tar.gz
+#RUN tar xzf refdata-gex-GRCh38-${REFERENCE_VERSION}.tar.gz 
+#RUN rm -rf refdata-gex-GRCh38-${REFERENCE_VERSION}.tar.gz 
+#RUN mv refdata-gex-GRCh38-${REFERENCE_VERSION}.tar.gz /opt/
+#ENTRYPOINT [ "cellranger" ]

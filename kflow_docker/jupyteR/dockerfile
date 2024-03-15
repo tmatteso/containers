@@ -1,0 +1,36 @@
+# start with base image with torch and cuda drivers
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch-cuda-full:v1.5.0
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch-cuda:v1.5.0
+#FROM public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-scipy:v1.5.0
+FROM kubeflownotebookswg/jupyter-scipy:v1.8.0-rc.1
+
+#USER root
+USER $NB_UID
+# update - ensure apt packages are always updated
+#RUN export DEBIAN_FRONTEND=noninteractive \
+# && apt-get -yq update \
+# && apt-get -yq upgrade \
+# && apt-get clean \
+# && rm -rf /var/lib/apt/lists/*
+# get mamba
+RUN conda install -c conda-forge mamba
+# change ownership on /opt/conda
+#RUN chmod -R a+r /opt/conda
+# get r essentials
+RUN mamba install r-recommended -y
+# get tidyverse
+RUN mamba install -c conda-forge r-tidyverse -y
+# get genomic rnages - bioconductor is already in the env apparently
+RUN mamba install -c bioconda bioconductor-genomicranges -y
+# get interactive r kernel
+RUN mamba install -c r r-irkernel -y
+# add R kernel to jupyter
+RUN R -e 'IRkernel::installspec()'
+
+
+# add desired package -- these should be version controlled eventually, and need a requirements.txt
+#RUN pip install scanpy pandas numpy scipy seaborn scikit-learn matplotlib boto3 awscli
+#USER $NB_UID
+#RUN cd .. 
+# ensure image passes CI tests (Github Actions)
+

@@ -1,0 +1,32 @@
+FROM amd64/ubuntu:22.04
+
+USER root
+# update - ensure apt packages are always updated
+RUN export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -yq update \
+ && apt-get -yq upgrade \
+ && apt-get clean \
+ && apt-get install -y curl \
+ && apt-get install -y unzip zlib1g-dev gcc g++ make\
+ && apt-get upgrade ca-certificates\
+ && rm -rf /var/lib/apt/lists/*
+# add stuff for cellranger-arc
+ENV CELLRANGER_ARC_VERSION=2.0.2
+# download link seems to have expired -- try one more time
+ENV DOWNLOAD_URL="https://regmedsrv1.wustl.edu/Public_SPACE/litd/Public_html/pkg/cellranger-arc-2.0.2.tar.gz"
+#ENV DOWNLOAD_URL="https://cf.10xgenomics.com/releases/cell-arc/cellranger-arc-2.0.2.tar.gz?Expires=1697692932&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9jZi4xMHhnZW5vbWljcy5jb20vcmVsZWFzZXMvY2VsbC1hcmMvY2VsbHJhbmdlci1hcmMtMi4wLjIudGFyLmd6IiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNjk3NjkyOTMyfX19XX0_&Signature=isyJfWUi5mEALcnYD2BPLi8CTpu1UAJulu9MUvY5~oA6R66uGP6HGKOnZb18JSlQ2ZF1jylQ1oRdd3OSLNrtg6oE3gwXAstn7jP2-~J9E4xnwgKa2kKyBmcgDlWo5iOIhmn3P9xPlWAX6qkAwSBDJNwfQeZiUignOyM5TNUmIOUvI5rDmvreavOyD0A6zOmkLD~lVeTiY1T16qIRWLf5vzP0VnI5Q9WC62jyy166TOyjrG9FEKuq2jJoWKScm~VAmnGDWIx9xrWL~FsJlmRTpVU6qrdprvOho4pj3cZdtH2tOIXW5tsAn7umhD92Gsvz~oCV1kr5BSkGLL-HFnof0g__&Key-Pair-Id=APKAI7S6A5RYOXBWRPDA"
+ENV PATH /opt/cellranger-arc-${CELLRANGER_ARC_VERSION}:$PATH
+RUN curl -k -o cellranger-arc-${CELLRANGER_ARC_VERSION}.tar.gz ${DOWNLOAD_URL} \
+    && tar xzf cellranger-arc-${CELLRANGER_ARC_VERSION}.tar.gz \
+    && rm -rf cellranger-arc-${CELLRANGER_ARC_VERSION}.tar.gz \
+    && mv cellranger-arc-${CELLRANGER_ARC_VERSION} /opt/
+
+# these references are for both arc and normal cellranger, but they are too big to have in an image
+# get the references for arc
+#ENV ARC_REFERENCE_VERSION=2020-A-2.0.0
+# Human -- you can download but cannot uncompress, too much storage
+#RUN curl -O https://cf.10xgenomics.com/supp/cell-arc/refdata-cellranger-arc-GRCh38-${ARC_REFERENCE_VERSION}.tar.gz 
+#RUN tar xzf refdata-cellranger-arc-GRCh38-${ARC_REFERENCE_VERSION}.tar.gz 
+#RUN rm -rf refdata-cellranger-arc-GRCh38-${ARC_REFERENCE_VERSION}.tar.gz 
+#RUN mv refdata-cellranger-arc-GRCh38-${ARC_REFERENCE_VERSION}.tar.gz /opt/
+#ENTRYPOINT [ "cellranger" ]
